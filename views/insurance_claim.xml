@@ -216,7 +216,7 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', 'in', ('checked'))]</field>
+         <field name="domain">[('state', '=', 'checked')]</field>
     </record>
     <menuitem action="action_insurance_checked_claims_view"
         id="menu_insurance_checked_claims" name="Checked Claims" groups="group_insurance_claim_user"
@@ -229,7 +229,7 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', 'in', ('rejected'))]</field>
+         <field name="domain">[('state', '=', 'rejected')]</field>
     </record>
     <menuitem action="action_insurance_rejected_claims_view"
         id="menu_insurance_rejected_claims" name="Rejected Claims" groups="group_insurance_claim_user"
@@ -241,7 +241,7 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', 'in', ('passed'))]</field>
+         <field name="domain">[('state', '=', 'passed')]</field>
     </record>
     <menuitem action="action_insurance_approved_claims_view"
         id="menu_insurance_approved_claims" name="Approved Claims" groups="group_insurance_claim_user"
