@@ -204,7 +204,7 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', 'not in', ('draft', 'rejected', 'confirmed'))]</field>
+         <field name="domain">[('state', 'not in', ('draft', 'confirmed'))]</field>
     </record>
     <menuitem action="action_insurance_submitted_claims_view"
         id="menu_insurance_submitted_claims" name="Submitted Claims" groups="group_insurance_claim_user"
