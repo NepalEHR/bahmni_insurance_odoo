@@ -241,8 +241,9 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', '=', 'passed')]</field>
+        <field name="domain">[('state', '=', 'valuated')]</field>
     </record>
+
     <menuitem action="action_insurance_approved_claims_view"
         id="menu_insurance_approved_claims" name="Approved Claims" groups="group_insurance_claim_user"
         parent="bahmni_insurance_odoo.menu_insurance_title" sequence="5"/>

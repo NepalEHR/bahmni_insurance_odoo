@@ -504,7 +504,7 @@ class claims(models.Model):
 
         for claim_response_line in response['claimLineItems']:
             _logger.info(json.dumps(claim_response_line))
-            claim_line = self.env['insurance.claim.line'].search([('claim_sequence', '=', claim_response_line['sequence']), ('claim_id', '=', claim.id)])
+            claim_line = self.env['insurance.claim.line'].search([('imis_product_code', '=', claim_response_line['code']), ('claim_id', '=', claim.id)])
             _logger.info(claim_response_line['sequence'])
             if claim_line:
                 claim_line.update({
