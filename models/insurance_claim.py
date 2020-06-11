@@ -463,28 +463,36 @@ class claims(models.Model):
                         "item": []
                     }
                     
-                    #Prepare Claim line item
-                    sequence = 1
-                    for claim_line in claim.insurance_claim_line:
-                        if claim_line.imis_product_code :
-                            claim_line.update({
-                                'claim_sequence': sequence
-                            })
-                            
-                            if claim_line.product_id.product_tmpl_id.type.lower() == 'service':
-                                category = 'service'
-                            else:
-                                category = 'item'
-                            
-                            claim_request['item'].append({
-                                "category": category,
-                                "quantity": claim_line.product_qty,
-                                "sequence": sequence,
-                                "code": claim_line.imis_product_code,
-                                "unitPrice": claim_line.price_unit
-                            })
-                            sequence += 1
-                
+                    if  claim.ipd_code:
+                        claim_request['item'].append({
+                                    "category": "item",
+                                    "quantity": 1,
+                                    "sequence": 1,
+                                    "code": claim.ipd_code.item_code,
+                                    "unitPrice": claim.ipd_code.insurance_price
+                                })
+                    else:
+                        #Prepare Claim line item
+                        sequence = 1
+                        for claim_line in claim.insurance_claim_line:
+                            if claim_line.imis_product_code :
+                                claim_line.update({
+                                    'claim_sequence': sequence
+                                })
+                                
+                                if claim_line.product_id.product_tmpl_id.type.lower() == 'service':
+                                    category = 'service'
+                                else:
+                                    category = 'item'
+                                
+                                claim_request['item'].append({
+                                    "category": category,
+                                    "quantity": claim_line.product_qty,
+                                    "sequence": sequence,
+                                    "code": claim_line.imis_product_code,
+                                    "unitPrice": claim_line.price_unit
+                                })
+                                sequence += 1
                     _logger.debug(claim_request)
             # Submit Claim for Processing
             response = self.env['insurance.connect']._submit_claims(claim_request)
@@ -499,8 +507,10 @@ class claims(models.Model):
         _logger.info("update_claim_from_claim_response")
         claim.claim_uuid = response['claimUUID']
         claim.amount_approved_total = response['approvedTotal']
-        claim.rejected_reason = response['rejectionReason']
+        claim.rejection_reason = response['rejectionReason']
         claim.state = response["claimStatus"]
+
+        claimed = self
         # _logger.info(claim)
 
         for claim_response_line in response['claimLineItems']:
@@ -516,7 +526,9 @@ class claims(models.Model):
                 claim_line.amount_approved = claim_response_line['totalApproved']
                 claim_line.quantity_approved = claim_response_line['quantityApproved']
             else:
-                raise UserError("The line item for current claim not found.")
+                claim.rejection_reason=claim_response_line['rejectedReason']
+                claimed.rejection_reason=claim_response_line['rejectedReason']
+            #     raise UserError("The line item for current claim not found.")
 
     claim_code = fields.Char(string='Claim Code', help="Claim Code")
     claim_manager_id = fields.Many2one('res.users', string='Claims Manager', index=True, track_visibility='onchange', default=lambda self: self.env.user)
@@ -527,6 +539,7 @@ class claims(models.Model):
     nhis_number = fields.Char(related='partner_id.nhis_number', readonly=True, store=True, string='NHIS Number')
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env['res.company']._company_default_get('insurance.claim'))
     amount_approved_total = fields.Monetary(string='Total Approved Amount', store=True, compute=_claimed_amount_all)
+    quantity_approved = fields.Integer(string='Total Approved Quantity')
     state = fields.Selection([
         ('draft', 'Draft'),
         ('confirmed', 'Confirmed'),
@@ -543,7 +556,7 @@ class claims(models.Model):
     currency_id = fields.Many2one(related='sale_orders.currency_id', string="Currency", readonly=True, required=True)
     insurance_claim_history = fields.One2many('insurance.claim.history', 'claim_id', string='Claim Lines', states={'confirmed': [('readonly', True)], 'submitted': [('readonly', True)], 'rejected': [('readonly', True)]}, copy=True)
     external_visit_uuid = fields.Char(string="External Visit Id", help="This field is used to store visit id of patient")
-    
+    ipd_code = fields.Many2one('insurance.odoo.product.map', string='IPD Package' )
     
 class claims_line(models.Model):
     _name = 'insurance.claim.line'
