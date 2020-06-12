@@ -44,7 +44,7 @@ class claims(models.Model):
             raise UserError("Claim has not been submitted to be tracked")
 
         #Track Claim
-        response = self.env['insurance.connect']._track_claim(claim.claim_code)
+        response = self.env['insurance.connect']._track_claim(claim.claim_uuid)
         if response:
             self.update_claim_from_claim_response(claim, response)
             
@@ -497,6 +497,7 @@ class claims(models.Model):
     
     def update_claim_from_claim_response(self, claim, response):
         _logger.info("update_claim_from_claim_response")
+        claim.claim_uuid = response['claimUUID']
         claim.amount_approved_total = response['approvedTotal']
         claim.rejected_reason = response['rejectionReason']
         claim.state = response["claimStatus"]
@@ -577,6 +578,7 @@ class claims_line(models.Model):
         _logger.info("Inside _amount_all")
         self.price_total = self.price_unit * self.product_qty
         
+    claim_uuid = fields.Many2one('insurance.claim', string='Claim UUID',  copy=False)
     claim_id = fields.Many2one('insurance.claim', string='Claim ID', required=True, ondelete='cascade', index=True, copy=False)
     claim_manager_id = fields.Many2one(related='claim_id.claim_manager_id', store=True, string='Claims Manager', readonly=True)
     claim_partner_id = fields.Many2one(related='claim_id.partner_id', store=True, string='Customer')
