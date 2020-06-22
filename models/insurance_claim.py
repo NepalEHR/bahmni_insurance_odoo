@@ -44,7 +44,9 @@ class claims(models.Model):
             raise UserError("Claim has not been submitted to be tracked")
 
         #Track Claim
-        response = self.env['insurance.connect']._track_claim(claim.claim_uuid)
+        
+        claimuuid=  claim.claim_uuid.replace("ClaimResponse/", "")
+        response = self.env['insurance.connect']._track_claim(claimuuid)
         if response:
             self.update_claim_from_claim_response(claim, response)
             
@@ -509,6 +511,7 @@ class claims(models.Model):
         claim.amount_approved_total = response['approvedTotal']
         claim.rejection_reason = response['rejectionReason']
         claim.state = response["claimStatus"]
+        claim.claim_uuid = response["claimUUID"]
 
         claimed = self
         # _logger.info(claim)
@@ -530,6 +533,28 @@ class claims(models.Model):
                 claimed.rejection_reason=claim_response_line['rejectedReason']
             #     raise UserError("The line item for current claim not found.")
 
+
+    @api.onchange('ipd_code')
+    @api.multi
+    def onchange_ipd_package(self):
+        for claim in self:
+            claim.ipd_item_code =claim.ipd_code.item_code
+            claim.ipd_icd_code=claim.ipd_code.icd_code
+            claim.ipd_product_name=claim.ipd_code.insurance_product
+            claim.ipd_product_cost=claim.ipd_code.insurance_price
+            claim.update({
+                    'ipd_item_code': claim.ipd_code.item_code,
+                    'ipd_icd_code': claim.ipd_code.icd_code.ipdCode,
+                    'ipd_product_name': claim.ipd_code.insurance_product,
+                    'ipd_product_cost': claim.ipd_code.insurance_price,
+                })  
+        # claim.ipd_item_code =claim.ipd_code.item_code
+        # claim.ipd_icd_code=claim.ipd_code.icd_code
+        # claim.ipd_product_name=claim.ipd_code.insurance_product
+        # claim.ipd_product_cost=claim.ipd_code.insurance_price
+        # raise UserError("IPD PACKAGE CHANGED "+claim.ipd_code.insurance_product)
+
+
     claim_code = fields.Char(string='Claim Code', help="Claim Code")
     claim_manager_id = fields.Many2one('res.users', string='Claims Manager', index=True, track_visibility='onchange', default=lambda self: self.env.user)
     claimed_date = fields.Datetime(string='Creation Date', index=True, help="Date on which claim is created.")
@@ -550,6 +575,8 @@ class claims(models.Model):
         ], string='Claim Status', default='draft', readonly=True)
     claim_comments = fields.Text(string='Comments')
     rejection_reason = fields.Text(string='Rejection Reason')
+    claim_uuid = fields.Text(string='Claim UUID', readonly=True)
+    package_claim = fields.Boolean(String="Claim by Package?")
     insurance_claim_line = fields.One2many("insurance.claim.line", "claim_id", string='Claim Lines', states={'confirmed': [('readonly', True)], 'submitted': [('readonly', True)]}, copy=True)
     sale_orders = fields.Many2many('sale.order', string='Sale Orders')
     partner_uuid = fields.Char(related='partner_id.uuid', string='Customer UUID', store=True, readonly=True)
@@ -557,6 +584,10 @@ class claims(models.Model):
     insurance_claim_history = fields.One2many('insurance.claim.history', 'claim_id', string='Claim Lines', states={'confirmed': [('readonly', True)], 'submitted': [('readonly', True)], 'rejected': [('readonly', True)]}, copy=True)
     external_visit_uuid = fields.Char(string="External Visit Id", help="This field is used to store visit id of patient")
     ipd_code = fields.Many2one('insurance.odoo.product.map', string='IPD Package' )
+    ipd_item_code = fields.Char(string="Item Code",store=True, readonly=True)
+    ipd_icd_code = fields.Char(string="ICD Code")
+    ipd_product_name = fields.Char(string="Product")
+    ipd_product_cost = fields.Char(string="Cost")
     
 class claims_line(models.Model):
     _name = 'insurance.claim.line'
@@ -591,7 +622,6 @@ class claims_line(models.Model):
         _logger.info("Inside _amount_all")
         self.price_total = self.price_unit * self.product_qty
         
-    claim_uuid = fields.Many2one('insurance.claim', string='Claim UUID',  copy=False)
     claim_id = fields.Many2one('insurance.claim', string='Claim ID', required=True, ondelete='cascade', index=True, copy=False)
     claim_manager_id = fields.Many2one(related='claim_id.claim_manager_id', store=True, string='Claims Manager', readonly=True)
     claim_partner_id = fields.Many2one(related='claim_id.partner_id', store=True, string='Customer')
