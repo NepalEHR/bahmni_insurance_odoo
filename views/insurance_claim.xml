@@ -248,6 +248,15 @@
          <field name="domain">[('state', 'not in', ('draft', 'rejected', 'confirmed'))]</field>
     </record>
 
+    <record id="action_insurance_checked_claims_view" model="ir.actions.act_window">
+        <field name="name">Checked Claims</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">insurance.claim</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,kanban,form</field>
+         <!-- <field name="domain">[('state', 'not in', ('draft', 'rejected', 'confirmed'))]</field> -->
+         <field name="domain">[('state', '=', 'checked')]</field>
+    </record>
 
     
     <record id="action_insurance_rejected_claims_view" model="ir.actions.act_window">
@@ -256,13 +265,29 @@
         <field name="res_model">insurance.claim</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,kanban,form</field>
-         <field name="domain">[('state', 'not in', ('draft', 'submitted', 'confirmed'))]</field>
+        <field name="domain">[('state', '=', 'rejected')]</field>
+         <!-- <field name="domain">[('state', '=', ('draft', 'submitted', 'confirmed'))]</field> -->
     </record>
+
+      <record id="action_insurance_approved_claims_view" model="ir.actions.act_window">
+        <field name="name">Approved Claims</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">insurance.claim</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,kanban,form</field>
+         <field name="domain">[('state', '=', 'passed')]</field>
+    </record>
+    <menuitem action="action_insurance_approved_claims_view"
+        id="menu_insurance_approved_claims" name="Approved Claims" groups="group_insurance_claim_user"
+        parent="bahmni_insurance_odoo.menu_insurance_title" sequence="5"/>
     <menuitem action="action_insurance_submitted_claims_view"
         id="menu_insurance_submitted_claims" name="Submitted Claims" groups="group_insurance_claim_user"
         parent="bahmni_insurance_odoo.menu_insurance_title" sequence="2"/>
     <menuitem action="action_insurance_rejected_claims_view"
         id="menu_insurance_rejected_claims" name="Rejected Claims" groups="group_insurance_claim_user"
         parent="bahmni_insurance_odoo.menu_insurance_title" sequence="3"/>
+    <menuitem action="action_insurance_checked_claims_view"
+        id="menu_insurance_checked_claims" name="Checked Claims" groups="group_insurance_claim_user"
+        parent="bahmni_insurance_odoo.menu_insurance_title" sequence="4"/>
         
 </odoo>
