@@ -14,7 +14,8 @@ class claims(models.Model):
     _description = 'Claims'
     _inherit = ['mail.thread']
 
-    @api.depends('insurance_claim_line.price_total')
+    @api.depends('insurance_claim_line.price_total')   
+    @api.one    
     def _claimed_amount_all(self):
         """
         Compute the total amounts of the claim
@@ -151,7 +152,13 @@ class claims(models.Model):
                 insurance_sale_order_lines = sale_order.order_line.filtered(lambda r: r.payment_type == 'insurance')
                 if len(insurance_sale_order_lines) == 0 :
                     raise UserError("No Sales order line marked as Insurance Payment type")
-                    
+                
+
+                
+                # response = self.env['insurance.connect']._get_diagnosis(sale_order.partner_id.id )
+                # diagonosed = response['diagnosis'][0]['codedAnswer']['name']
+                # raise UserError(diagonosed)
+
                 claim = {
                     'claim_manager_id' : sale_order.user_id.id,
                     'claimed_date' : sale_order.create_date,
@@ -555,6 +562,14 @@ class claims(models.Model):
         # raise UserError("IPD PACKAGE CHANGED "+claim.ipd_code.insurance_product)
 
 
+    @api.onchange('package_claim')
+    def _channge_in_claim(self):
+        response = self.env['insurance.connect']._get_diagnosis(self.partner_uuid )
+        diagnosed = 'No diagnosed'
+        if(len(response['diagnosis']) > 0):
+            diagnosed = response['diagnosis'][0]['codedAnswer']['shortName']
+        self.hospital_diagnosis = diagnosed
+
     claim_code = fields.Char(string='Claim Code', help="Claim Code")
     claim_manager_id = fields.Many2one('res.users', string='Claims Manager', index=True, track_visibility='onchange', default=lambda self: self.env.user)
     claimed_date = fields.Datetime(string='Creation Date', index=True, help="Date on which claim is created.")
@@ -584,10 +599,11 @@ class claims(models.Model):
     insurance_claim_history = fields.One2many('insurance.claim.history', 'claim_id', string='Claim Lines', states={'confirmed': [('readonly', True)], 'submitted': [('readonly', True)], 'rejected': [('readonly', True)]}, copy=True)
     external_visit_uuid = fields.Char(string="External Visit Id", help="This field is used to store visit id of patient")
     ipd_code = fields.Many2one('insurance.odoo.product.map', string='IPD Package' )
-    ipd_item_code = fields.Char(string="Item Code",store=True, readonly=True)
+    ipd_item_code = fields.Char(string="Item Code")
     ipd_icd_code = fields.Char(string="ICD Code")
     ipd_product_name = fields.Char(string="Product")
     ipd_product_cost = fields.Char(string="Cost")
+    hospital_diagnosis =  fields.Char(string='Diagnosed')
     
 class claims_line(models.Model):
     _name = 'insurance.claim.line'
@@ -615,6 +631,7 @@ class claims_line(models.Model):
         self.price_unit = self.product_id.insurance_price
     
     @api.depends('product_qty', 'price_unit', 'product_uom')
+    @api.one    
     def _compute_amount(self):
         """
         Compute the amounts of the Claim line Item.

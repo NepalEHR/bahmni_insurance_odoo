@@ -18,10 +18,10 @@
                     </group>
                     <group>
                         <field name="icd_code" widget="many2many_tags">
-                            <tree>
+                            <!-- <tree>
                                     <field name="ipdCode"/>
                                     <field name="diagnosis"/>
-                            </tree>
+                            </tree> -->
                         </field>
                     </group>
                 </sheet>

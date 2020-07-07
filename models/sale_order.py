@@ -145,7 +145,7 @@ class sale_order(models.Model):
     
     @api.multi
     def action_invoice_create_commons(self, order):
-        _logger.info("Inside action_invoice_create_commons overwritten")
+        _logger.info("Inside action_invoice_create_commons  overwritten")
         for order in self:
             _logger.info("sale_order")
             _logger.info(order)

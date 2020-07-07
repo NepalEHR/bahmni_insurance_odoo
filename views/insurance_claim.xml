@@ -91,7 +91,9 @@
                             <!-- <field String="Claim UUID" name="claim_uuid" /> -->
                             <field String="Rejected Reason" name="rejection_reason" 
                              attrs="{'visible': [('state', 'in', ['rejected'])]}"/>
-
+                              
+  <field name="hospital_diagnosis" attrs="{'invisible':[('package_claim', '!=', True)]}"/>  
+  <!-- <span id="diagnosed_code"><b>Diagnosed</b> Typhoid</span>     -->
                         </group>
                         <group>
                             <field name="claimed_date" attrs="{'readonly': [('state', 'in', ('draft','confirmed'))]}" required="1"/>
