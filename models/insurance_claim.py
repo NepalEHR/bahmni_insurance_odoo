@@ -31,6 +31,13 @@ class claims(models.Model):
                 'claimed_amount_total': claimed_amount_total
             })    
         
+
+    def action_claim_update(self):
+        _logger.info("action_claim_update")
+        claim = self
+        for sale_order_line in claim.sale_orders:
+            raise UserError(sale_order_line.name)
+
     @api.multi
     def action_track_status(self):
         '''
@@ -384,7 +391,7 @@ class claims(models.Model):
             
             # if self._check_if_eligible(claim) == False:
             #      raise UserError("Claim can't be processed. Claimed amount greater than eligible amount.")
-            
+            # raise UserError(claim.external_visit_uuid)
             if self.check_visit_closed(claim.external_visit_uuid) == False:
                 raise UserError("The current visit has not been closed. So can't be confirmed now.")
             
@@ -472,14 +479,27 @@ class claims(models.Model):
                         "item": []
                     }
                     
-                    if  claim.ipd_code:
-                        claim_request['item'].append({
-                                    "category": "item",
-                                    "quantity": 1,
-                                    "sequence": 1,
-                                    "code": claim.ipd_code.item_code,
-                                    "unitPrice": claim.ipd_code.insurance_price
+                    if  claim.package_claim:
+                        #Prepare Claim line item
+                        sequence = 1
+                        for claim_line in claim.ipd_code:
+                            for ipd_code in claim_line:
+                                claim_request['item'].append({
+                                    "category": 'item',
+                                    "quantity": claim_line.quantity_claim,
+                                    "sequence": sequence,
+                                    "code": claim_line.item_code,
+                                    "unitPrice": claim_line.claimed_amount
                                 })
+                                sequence += 1
+
+                        # claim_request['item'].append({
+                        #             "category": "item",
+                        #             "quantity": 1,
+                        #             "sequence": 1,
+                        #             "code": claim.ipd_code.item_code,
+                        #             "unitPrice": claim.ipd_code.insurance_price
+                        #         })
                     else:
                         #Prepare Claim line item
                         sequence = 1
@@ -504,7 +524,9 @@ class claims(models.Model):
                                 sequence += 1
                     _logger.debug(claim_request)
             # Submit Claim for Processing
+            #raise UserError(claim_request)
             response = self.env['insurance.connect']._submit_claims(claim_request)
+            # raise UserError(response)
             if response:
                 self.update_claim_from_claim_response(claim, response)
                     
@@ -525,56 +547,66 @@ class claims(models.Model):
 
         for claim_response_line in response['claimLineItems']:
             _logger.info(json.dumps(claim_response_line))
-            claim_line = self.env['insurance.claim.line'].search([('imis_product_code', '=', claim_response_line['code']), ('claim_id', '=', claim.id)])
-            _logger.info(claim_response_line['sequence'])
-            if claim_line:
-                claim_line.update({
-                    'state': claim_response_line['status']
-                })
+            if  claim.package_claim:
+                claim_line = self.env['insurance.claim.package'].search([('ipd_code', '=', claim_response_line['code']), ('claim_id', '=', claim.id)])
+                _logger.info(claim_response_line['sequence'])
+                if claim_line:
+                    claim_line.update({
+                        'state': claim_response_line['status']
+                    })
 
-                claim_line.rejection_reason = claim_response_line['rejectedReason']
-                claim_line.amount_approved = claim_response_line['totalApproved']
-                claim_line.quantity_approved = claim_response_line['quantityApproved']
+                    claim_line.rejection_reason = claim_response_line['rejectedReason']
+                    claim_line.amount_approved = claim_response_line['totalApproved']
+                    claim_line.quantity_approved = claim_response_line['quantityApproved']
+                else:
+                    claim.rejection_reason=claim_response_line['rejectedReason']
+                    claimed.rejection_reason=claim_response_line['rejectedReason']
+
             else:
-                claim.rejection_reason=claim_response_line['rejectedReason']
-                claimed.rejection_reason=claim_response_line['rejectedReason']
+                claim_line = self.env['insurance.claim.line'].search([('imis_product_code', '=', claim_response_line['code']), ('claim_id', '=', claim.id)])
+                _logger.info(claim_response_line['sequence'])
+                if claim_line:
+                    claim_line.update({
+                        'state': claim_response_line['status']
+                    })
+
+                    claim_line.rejection_reason = claim_response_line['rejectedReason']
+                    claim_line.amount_approved = claim_response_line['totalApproved']
+                    claim_line.quantity_approved = claim_response_line['quantityApproved']
+                else:
+                    claim.rejection_reason=claim_response_line['rejectedReason']
+                    claimed.rejection_reason=claim_response_line['rejectedReason']
             #     raise UserError("The line item for current claim not found.")
 
 
     @api.onchange('ipd_code')
     @api.multi
     def onchange_ipd_package(self):
+        claimed_amount_total_package=0.0
         for claim in self:
-            claim.ipd_item_code =claim.ipd_code.item_code
-            claim.ipd_icd_code=claim.ipd_code.icd_code
-            claim.ipd_product_name=claim.ipd_code.insurance_product
-            claim.ipd_product_cost=claim.ipd_code.insurance_price
+            for package in claim.ipd_code:
+                claimed_amount_total_package += package.claimed_amount
+            claim.claimed_amount_total_package =claimed_amount_total_package
             claim.update({
-                    'ipd_item_code': claim.ipd_code.item_code,
-                    'ipd_icd_code': claim.ipd_code.icd_code.ipdCode,
-                    'ipd_product_name': claim.ipd_code.insurance_product,
-                    'ipd_product_cost': claim.ipd_code.insurance_price,
+                    'claimed_amount_total_package': claimed_amount_total_package
                 })  
-        # claim.ipd_item_code =claim.ipd_code.item_code
-        # claim.ipd_icd_code=claim.ipd_code.icd_code
-        # claim.ipd_product_name=claim.ipd_code.insurance_product
-        # claim.ipd_product_cost=claim.ipd_code.insurance_price
         # raise UserError("IPD PACKAGE CHANGED "+claim.ipd_code.insurance_product)
 
 
-    @api.onchange('package_claim')
-    def _channge_in_claim(self):
-        response = self.env['insurance.connect']._get_diagnosis(self.partner_uuid )
-        diagnosed = 'No diagnosed'
-        if(len(response['diagnosis']) > 0):
-            diagnosed = response['diagnosis'][0]['codedAnswer']['shortName']
-        self.hospital_diagnosis = diagnosed
+    # @api.onchange('package_claim')
+    # def _channge_in_claim(self):
+    #     response = self.env['insurance.connect']._get_diagnosis(self.partner_uuid )
+    #     diagnosed = 'No diagnosed'
+    #     if(len(response['diagnosis']) > 0):
+    #         diagnosed = response['diagnosis'][0]['codedAnswer']['shortName']
+    #     self.hospital_diagnosis = diagnosed
 
     claim_code = fields.Char(string='Claim Code', help="Claim Code")
     claim_manager_id = fields.Many2one('res.users', string='Claims Manager', index=True, track_visibility='onchange', default=lambda self: self.env.user)
     claimed_date = fields.Datetime(string='Creation Date', index=True, help="Date on which claim is created.")
     claimed_received_date = fields.Datetime(string='Processed Date', index=True, help="Date on which claim is processed.")
     claimed_amount_total = fields.Monetary(string='Total Claimed Amount', store=True, readonly=True, compute=_claimed_amount_all)
+    claimed_amount_total_package = fields.Monetary(string='Total Claimed Amount',  readonly=True,compute=onchange_ipd_package)
     partner_id = fields.Many2one('res.partner', string='Insuree', required=True, change_default=True, index=True, track_visibility='always')
     nhis_number = fields.Char(related='partner_id.nhis_number', readonly=True, store=True, string='NHIS Number')
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env['res.company']._company_default_get('insurance.claim'))
@@ -598,13 +630,59 @@ class claims(models.Model):
     currency_id = fields.Many2one(related='sale_orders.currency_id', string="Currency", readonly=True, required=True)
     insurance_claim_history = fields.One2many('insurance.claim.history', 'claim_id', string='Claim Lines', states={'confirmed': [('readonly', True)], 'submitted': [('readonly', True)], 'rejected': [('readonly', True)]}, copy=True)
     external_visit_uuid = fields.Char(string="External Visit Id", help="This field is used to store visit id of patient")
-    ipd_code = fields.Many2one('insurance.odoo.product.map', string='IPD Package' )
-    ipd_item_code = fields.Char(string="Item Code")
-    ipd_icd_code = fields.Char(string="ICD Code")
-    ipd_product_name = fields.Char(string="Product")
-    ipd_product_cost = fields.Char(string="Cost")
+    ipd_code = fields.Many2many('insurance.claim.package', string='IPD Package' )
+    # ipd_item_code = fields.Char(string="Item Code")
+    # ipd_icd_code = fields.Char(string="ICD Code")
+    # ipd_product_name = fields.Char(string="Product")
+    # ipd_product_cost = fields.Char(string="Cost")
     hospital_diagnosis =  fields.Char(string='Diagnosed')
+
+class claim_package(models.Model):
+    _name = 'insurance.claim.package'
+    _description = 'Claim package Items' 
+    ipd_code = fields.Many2one('insurance.odoo.product.map', string='Package', domain=[('item_code', 'ilike', 'ipd')],  required=True)
+    claimed_amount = fields.Float( string='Claimed amount')
+    amount_approved = fields.Float(string='Approved amount', store=True)
+    quantity_claim  = fields.Float(string='Quantity', required=True, default=1.0)
+    quantity_approved  = fields.Float(string='Quantity', required=True, default=1.0)
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('passed', 'Passed'),
+        ('rejected', 'Rejected')
+        ],  string='Claim Status',default='draft', readonly=True, copy=False, store=True)
+    claim_comments = fields.Text(string='Comments')
+    rejection_reason = fields.Text(string='Rejection Reason', readonly=True,  store=True)
+    item_code = fields.Char(string="Item Code")
+
+    @api.multi
+    def name_get(self):
+        result = []
+        for record in self:
+            record_name = record.ipd_code.insurance_product 
+            result.append((record.id, record_name))
+        return result
     
+    @api.model
+    def name_search(self, name, args=None, operator='ilike', limit=100):
+        args = args or []
+        recs = self.search([('ipd_code.insurance_product', operator, name)] + args, limit=limit)
+        return recs.name_get()
+
+    @api.onchange('ipd_code')
+    def _channge_in_claim(self):
+        claimed_amount=0.0
+        code = ''
+        for claim in self:
+            for ipd in self.ipd_code:
+                claimed_amount = ipd.insurance_price
+                code=  ipd.item_code
+        claim.claimed_amount=claimed_amount
+        claim.item_code=code
+        claim.update({
+                'claimed_amount': claimed_amount,
+                'item_code': code
+            })                 
+
 class claims_line(models.Model):
     _name = 'insurance.claim.line'
     _description = 'Claim Line Items' 

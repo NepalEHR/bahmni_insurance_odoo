@@ -88,6 +88,7 @@ class insurance_connect(models.TransientModel):
                 _logger.error(req.data)
                 raise UserError("Please check credentials for insurance connect service and retry again")
             else:
+                # raise UserError(req.data.decode('utf-8'))
                 response = json.loads(req.data.decode('utf-8'))
                 _logger.info(json.dumps(response))
                 if response["operationOutComeException"] is None:
@@ -179,6 +180,7 @@ class insurance_connect(models.TransientModel):
             url = url%(visit_uuid)
             http = urllib3.PoolManager()
             req = http.request('GET', url, headers=self.get_header(insurance_connect_configurations))
+            # raise UserError(json.dumps(req))
             return self.response_processor(req)
             
         except Exception as err:
@@ -213,7 +215,7 @@ class insurance_connect(models.TransientModel):
             return response
         elif response.status == 503:
             _logger.error(response.data)
-            raise UserError("Insurance connect service not available. Please contact system administrator")
+            raise UserError("Insurance connect service not available.Please contact system administrator")
         elif response.status == 401:
             _logger.error(response.data)
             raise UserError("Please check credentials for insurance connect service and retry again")

@@ -1,7 +1,7 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError,Warning
 from odoo.tools import float_is_zero
-
+from datetime import datetime as dt
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -20,29 +20,35 @@ class sale_order(models.Model):
                             'payment_type': sale_order.payment_type
                             })
         else:
-            return {'value': {'payment_type': 'cash'}}
+            if self.payment_type=='insurance':
+                return {'warning': {'title':'Warning Main!!!','message':'Payment type \'Insurance\' can be selected for patient with valid insuree id only.'},'value': {'payment_type': 'cash'}}
        
     @api.onchange("order_line")
     def on_change_state(self):
-        if self.nhis_number:
-            cash =False
-            insurance = False
-            for sale_order in self:
-                for sale_order_line in sale_order.order_line:
-                    if sale_order_line.payment_type == 'cash':
-                        cash =True
-                    if sale_order_line.payment_type == 'insurance':
+        cash =False
+        insurance = False
+        for sale_order in self:
+            for sale_order_line in sale_order.order_line:
+                if sale_order_line.payment_type == 'cash':
+                    cash =True
+                if sale_order_line.payment_type == 'insurance':
+                    if self.nhis_number:
                         insurance =True
                         sale_order.update({'payment_type': 'partial'})
-            if(cash and insurance):
-                return {'value': {'payment_type': 'partial'}}
-            elif(cash):
-                return {'value': {'payment_type': 'cash'}}
-            elif(insurance):
-                return {'value': {'payment_type': 'insurance'}}
-        else:
+                    else:
+                        return {'warning': {'title':'Warning!!!','message':'Payment type \'Insurance\' can be selected for patient with valid insuree id only.'},'value': {'payment_type': 'cash'}}
+        if(cash and insurance):
+            return {'value': {'payment_type': 'partial'}}
+        elif(cash):
             return {'value': {'payment_type': 'cash'}}
+        elif(insurance):
+            if self.nhis_number:
+                return {'value': {'payment_type': 'insurance'}}
+            else:
+                 return {'warning': {'title':'Warning!!!','message':'Payment typess \'Insurance\' can be selected for patient with valid insuree id only.'},'value': {'payment_type': 'cash'}}
 
+    def setCashTypeLine(self):
+        return {'warning': {'title':'Warning FOR INSURANCE!!!','message':'Payment typess \'Insurance\' can be selected for patient with valid insuree id only.'},'value': {'payment_type': 'cash'}}
         
     @api.onchange('partner_id')
     def _get_nhis_number(self):
@@ -260,19 +266,23 @@ class sale_order(models.Model):
         if self.payment_type in ('insurance', 'partial'):
             self.check_eligibility();
             
-            return True;
-            
+            # return True;
             #TODO Remove this comment section when eligibilty response is fixed
-#             params = self.env['insurance.eligibility'].get_insurance_details(self.partner_id)
-#             claimable_amount = self.calculate_claimable_amount()
-#             
-#             #Check if insurance can be processed. Perform validations here. If true go ahead
-#             if params and claimable_amount <= params['eligibility_balance']:
-#                 return True
-#             elif claimable_amount == 0.0 :
-#                 raise UserError("Sales order can't be confirmed. No item present to be claimed.")
-#             else:
-#                 raise UserError("Sales order can't be confirmed. No sufficient amount to process claim")
+            params = self.env['insurance.eligibility'].get_insurance_details(self.partner_id)
+            claimable_amount = self.calculate_claimable_amount()
+            eligibleDate=params.eligibility_line_item.valid_till
+            eligilbleUpto = dt.strptime(eligibleDate, "%Y-%m-%d %H:%M:%S")
+            today=dt.today().strftime("%Y-%m-%d %H:%M:%S")
+            todayDate = dt.strptime(today, "%Y-%m-%d %H:%M:%S")
+            #Check if insurance can be processed. Perform validations here. If true go ahead
+            if params and claimable_amount <= params.eligibility_line_item.eligibility_balance and eligilbleUpto > todayDate:
+                return True
+            elif eligilbleUpto < todayDate :
+                raise UserError("Insurance has been expired. No item can be claimed.")
+            elif claimable_amount == 0.0 :
+                raise UserError("Sales order can't be confirmed. No item present to be claimed.")
+            else:
+                raise UserError("Sales order can't be confirmed. No sufficient amount to process claim")
 
         return True
     
@@ -425,7 +435,6 @@ class sale_order_line(models.Model):
     _inherit = 'sale.order.line'
 
     payment_type = fields.Selection([('insurance', 'INSURANCE'), ('cash', 'CASH')], default='cash', string="Payment Type", required=True)
-   
     # @api.onchange('payment_type')
     # def on_change_state(self):
     #     _logger.info("Inside order line _change_payment_type")
