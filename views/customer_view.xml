@@ -8,6 +8,9 @@
             <field name="ref" position="after">
                 <field name="nhis_number" string="NHIS Number"/>
             </field>
+            <field name="function" position="after">
+                <field name="InsuranceActive" string="NHIS Member Active"/>
+            </field>
         </field>
-    </record>
+    </record>`
 </odoo>

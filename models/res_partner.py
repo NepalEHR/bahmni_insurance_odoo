@@ -19,8 +19,19 @@ class ResPartner(models.Model):
         attributes = self.env['res.partner.attributes'].search([('partner_id' , '=', partner_id),('name', '=', 'NHIS Number')])
         if attributes:
             return attributes.value
-        
-    nhis_number = fields.Char(string='NHIS Number', compute=_retrieve_nhis_number)
+    @api.multi
+    def _retrieve_nhis_status(self):
+        # _logger.info("Inside _retrieve_nhis_number")
+        for partner in self:
+            self.InsuranceActive = self._get_nhis_status(partner.id)
+    @api.multi
+    def _get_nhis_status(self, partner_id):
+        # _logger.info("Inside get_nhis number. Partner_id = %s", partner_id)
+        attributes = self.env['res.partner.attributes'].search([('partner_id' , '=', partner_id),('name', '=', 'InsuranceActive')])
+        if attributes:
+            return attributes.value 
+    nhis_number = fields.Char(string='NHIS Number', compute='_retrieve_nhis_number')
+    InsuranceActive = fields.Boolean('Insurance Status', compute='_retrieve_nhis_status')
     uuid = fields.Char(string = "UUID")
     
     
