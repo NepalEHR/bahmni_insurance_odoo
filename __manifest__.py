@@ -26,27 +26,7 @@
 
     # always loaded
     'data': [
-        # 'security/insurance_security.xml',
-        # 'security/ir.model.access.csv',
-        # 'views/insurance_views.xml',
-        # 'views/quotation_view.xml',
-        # 'views/insurance_odoo_product_map_view.xml',
-        # 'views/insurance_ipd_disease_view.xml',
-        # 'views/insurance_claim.xml',
         'views/customer_view.xml',
-        # 'report/insuree_consent_form.xml',
-        # 'report/consent_form_template.xml',
-        # 'wizard/eligibility_check_response.xml',
-        # 'wizard/claim_fhir.xml',
-        # 'views/insurance_settings_view.xml',
-        # 'views/company_view.xml',
-        # 'views/account_invoice_view.xml',
-        # 'data/insurance_claim_data.xml',
-        # 'report/claim_report.xml',
-        # 'report/claim_patient_report.xml',
-        # 'wizard/claim_summary.xml',
-        # 'report/insurance_claim_summary_report.xml',
-        # 'report/report_insurance_claim_summary_template.xml'
     ],
     # only loaded in demonstration mode
     #'demo': [
