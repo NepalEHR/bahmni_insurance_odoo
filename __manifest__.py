@@ -27,6 +27,7 @@
     # always loaded
     'data': [
         'views/customer_view.xml',
+        'views/quotation_view.xml',
     ],
     # only loaded in demonstration mode
     #'demo': [

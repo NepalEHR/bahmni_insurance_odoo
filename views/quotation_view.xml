@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+   
+    <record id="nhis_number_field_sale_quotation" model="ir.ui.view">
+        <field name="name">sale.order.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field String="NHIS Number" name="nhis_number"/>
+                <field String="Insurance Status" name="InsuranceActive"/>
+            </field>
+        </field>
+    </record>
+    
+ </odoo>
