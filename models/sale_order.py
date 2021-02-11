@@ -13,16 +13,18 @@ class sale_order(models.Model):
     @api.onchange('partner_id')
     def _get_nhis_number(self):
         _logger.info("Inside _get_nhis_number")
-        partner_id = self.partner_id.id
-        if partner_id:
-            self.nhis_number = self.env['res.partner']._get_nhis_number(partner_id)
+        for sale_order in self:
+            partner_id = sale_order.partner_id.id
+            if partner_id:
+                sale_order.nhis_number = self.env['res.partner']._get_nhis_number(partner_id)
     
     @api.onchange('partner_id')
     def _get_nhis_status(self):
         _logger.info("Inside _get_nhis_status")
-        partner_id = self.partner_id.id
-        if partner_id:
-            self.InsuranceActive = self.env['res.partner']._get_nhis_status(partner_id)
+        for sale_order in self:
+            partner_id = sale_order.partner_id.id
+            if partner_id:
+                sale_order.InsuranceActive = self.env['res.partner']._get_nhis_status(partner_id)
 
     @api.onchange('payment_type')
     def _change_payment_type(self):
