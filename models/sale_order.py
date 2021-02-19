@@ -96,7 +96,16 @@ class sale_order_line(models.Model):
     _inherit = 'sale.order.line'
 
     payment_type = fields.Selection([('insurance', 'INSURANCE'), ('cash', 'CASH'), ('free', 'FREE')], default='cash', string="Payment Type", required=True)
-
+    
+    def getInsuranceCost(self,productData):
+        # resData = self.env('insurance.odoo.product.map').search(self._cr, self._uid, [( 'odoo_product_id', 'in', productData.id) ])
+        resData =self.env['insurance.odoo.product.map'].search([('odoo_product_id', '=', productData.id)], limit=10)
+        # raise UserError(_('getting insurance cost of '+ str(len(resData))))
+        if len(resData) == 0:
+            raise UserError(_('Product not found in mapping. Please contact admin.'))
+        else:
+            return resData[0].insurance_price
+    
     @api.onchange('payment_type')
     def _change_payment_type(self):
         _logger.info("Inside _change_payment_type")
@@ -107,6 +116,8 @@ class sale_order_line(models.Model):
                 return {'value': {'price_unit':0}}
             if sale_order_line.payment_type == 'insurance' :
                 if self.order_id.nhis_number:
-                    return {'value': {'price_unit': sale_order_line.product_id.list_price}}
+                    insurance_cost = self.getInsuranceCost(sale_order_line.product_id)
+                    return {'value': {'price_unit':insurance_cost}}
+                    # return {'value': {'price_unit': sale_order_line.product_id.list_price}}
                 else:
                     return {'warning': {'title':'Warning!!!','message':'Payment type \'Insurance\' can be selected for patient with valid insuree id only.'},'value': {'payment_type': 'cash'}}
