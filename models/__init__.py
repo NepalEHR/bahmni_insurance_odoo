@@ -1,2 +1,3 @@
 import res_partner
 import sale_order
+import insurance_odoo_product_map
