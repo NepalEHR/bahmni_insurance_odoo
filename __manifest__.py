@@ -32,6 +32,14 @@
         'views/customer_view.xml',
         'views/quotation_view.xml',
         'views/insurance_odoo_product_map_view.xml',
+        'views/insurance_settings_view.xml',
+        'views/company_view.xml',
+        'views/account_invoice_view.xml',
+        'wizard/eligibility_check_response.xml',
+        'wizard/claim_fhir.xml',
+        'wizard/claim_summary.xml',
+        'views/insurance_claim.xml',
+        'views/payment_journal_mapping.xml'
     ],
     # only loaded in demonstration mode
     #'demo': [
