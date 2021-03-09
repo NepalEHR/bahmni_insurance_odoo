@@ -30,3 +30,10 @@ class account_invoice(models.Model):
                 payment.update({
                     'journal_id': id_needed
                 })    
+                payment.currency_id = payment.journal_id.currency_id or payment.company_id.currency_id
+                # Set default payment method (we consider the first to be the default one)
+                payment_methods = payment.payment_type == 'inbound' and payment.journal_id.inbound_payment_method_ids or payment.journal_id.outbound_payment_method_ids
+                payment.payment_method_id = payment_methods and payment_methods[0] or False
+                # Set payment method domain (restrict to methods enabled for the journal and to selected payment type)
+                payment_type = payment.payment_type in ('outbound', 'transfer') and 'outbound' or 'inbound'
+                return {'domain': {'payment_method_id': [('payment_type', '=', payment_type), ('id', 'in', payment_methods.ids)]}}
